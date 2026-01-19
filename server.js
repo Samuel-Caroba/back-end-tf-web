@@ -130,16 +130,22 @@ app.delete("/administrador/:id", async (req, res) => {
 // CREATE
 app.post("/servico", async (req, res) => {
   const db = conectarBD();
-  const { nome, descricao, valor } = req.body;
+  const { nome, descricao, valor, popular = false } = req.body;
   const query = `
-    INSERT INTO servico (nome, descricao, valor)
-    VALUES ($1, $2, $3)
+    INSERT INTO servico (nome, descricao, valor, popular)
+    VALUES ($1, $2, $3, $4)
     RETURNING *;
   `;
   try {
-    const result = await db.query(query, [nome, descricao, valor]);
+    const result = await db.query(query, [
+      nome,
+      descricao,
+      valor,
+      popular ? true : false
+    ]);
     res.json(result.rows[0]);
   } catch (e) {
+    console.error(e);
     res.status(500).json({ erro: "Erro ao criar serviço" });
   }
 });
@@ -152,6 +158,22 @@ app.get("/servico", async (req, res) => {
     res.json(result.rows);
   } catch (e) {
     res.status(500).json({ erro: "Erro ao buscar serviços" });
+  }
+});
+
+// READ POPULARES
+app.get("/servico/populares", async (req, res) => {
+  const db = conectarBD();
+  try {
+    const result = await db.query(`
+      SELECT * FROM servico 
+      WHERE popular = true 
+      ORDER BY nome
+    `);
+    res.json(result.rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ erro: "Erro ao buscar serviços populares" });
   }
 });
 
@@ -172,14 +194,19 @@ app.get("/servico/:id", async (req, res) => {
 // UPDATE
 app.put("/servico/:id", async (req, res) => {
   const db = conectarBD();
-  const { nome, descricao, valor } = req.body;
+  const { nome, descricao, valor, popular } = req.body;
+
   try {
     const result = await db.query(
-      `UPDATE servico SET nome=$1, descricao=$2, valor=$3 WHERE id_servico=$4 RETURNING *;`,
-      [nome, descricao, valor, req.params.id]
+      `UPDATE servico 
+       SET nome = $1, descricao = $2, valor = $3, popular = $4 
+       WHERE id_servico = $5 
+       RETURNING *;`,
+      [nome, descricao, valor, popular ? true : false, req.params.id]
     );
     res.json(result.rows[0]);
   } catch (e) {
+    console.error(e);
     res.status(500).json({ erro: "Erro ao atualizar serviço" });
   }
 });
@@ -188,7 +215,7 @@ app.put("/servico/:id", async (req, res) => {
 app.delete("/servico/:id", async (req, res) => {
   const db = conectarBD();
   try {
-    await db.query(`DELETE FROM servico WHERE id_servico=$1;`, [
+    await db.query(`DELETE FROM servico WHERE id_servico = $1;`, [
       req.params.id
     ]);
     res.json({ message: "Serviço removido" });
@@ -197,25 +224,6 @@ app.delete("/servico/:id", async (req, res) => {
   }
 });
 
-// UPDATE
-app.put("/servico/:id", async (req, res) => {
-  const db = conectarBD();
-  const { nome, descricao, valor, popular } = req.body; // ← adicionado 'popular'
-
-  try {
-    const result = await db.query(
-      `UPDATE servico 
-       SET nome=$1, descricao=$2, valor=$3, popular=$4 
-       WHERE id_servico=$5 
-       RETURNING *;`,
-      [nome, descricao, valor, popular ? true : false, req.params.id] // ← converte para boolean
-    );
-    res.json(result.rows[0]);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ erro: "Erro ao atualizar serviço" });
-  }
-});
 // ========================
 // EXPORT PARA VERCEL
 // ========================
