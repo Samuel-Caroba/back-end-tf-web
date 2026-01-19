@@ -1,21 +1,27 @@
 import pkg from "pg";
 import dotenv from "dotenv";
+import express from "express";
+
 dotenv.config();
 
-import express from "express";
 const app = express();
-const port = 3000;
-
 const { Pool } = pkg;
 let pool = null;
 
+// Middleware para parsing de JSON
 app.use(express.json());
 
+// Middleware CORS (com suporte a OPTIONS)
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
   next();
 });
+
 function conectarBD() {
   if (!pool) {
     pool = new Pool({
@@ -30,16 +36,14 @@ function conectarBD() {
 // =======================================
 app.get("/", async (req, res) => {
   const db = conectarBD();
-
   let dbStatus = "ok";
   try {
     await db.query("SELECT 1");
   } catch (e) {
     dbStatus = e.message;
   }
-
   res.json({
-    message: "API para Adinistrar serviços e administradores",
+    message: "API para Administrar serviços e administradores",
     author: "Os Carobas",
     statusBD: dbStatus
   });
@@ -53,13 +57,11 @@ app.get("/", async (req, res) => {
 app.post("/administrador", async (req, res) => {
   const db = conectarBD();
   const { nome, email, senha } = req.body;
-
   const query = `
-      INSERT INTO administrador (nome, email, senha)
-      VALUES ($1, $2, $3)
-      RETURNING *;
+    INSERT INTO administrador (nome, email, senha)
+    VALUES ($1, $2, $3)
+    RETURNING *;
   `;
-
   try {
     const result = await db.query(query, [nome, email, senha]);
     res.json(result.rows[0]);
@@ -71,7 +73,6 @@ app.post("/administrador", async (req, res) => {
 // READ ALL
 app.get("/administrador", async (req, res) => {
   const db = conectarBD();
-
   try {
     const result = await db.query(`SELECT * FROM administrador;`);
     res.json(result.rows);
@@ -83,7 +84,6 @@ app.get("/administrador", async (req, res) => {
 // READ BY ID
 app.get("/administrador/:id", async (req, res) => {
   const db = conectarBD();
-
   try {
     const result = await db.query(
       `SELECT * FROM administrador WHERE id_admin = $1;`,
@@ -99,7 +99,6 @@ app.get("/administrador/:id", async (req, res) => {
 app.put("/administrador/:id", async (req, res) => {
   const db = conectarBD();
   const { nome, email, senha } = req.body;
-
   try {
     const result = await db.query(
       `UPDATE administrador SET nome=$1, email=$2, senha=$3 WHERE id_admin=$4 RETURNING *;`,
@@ -114,7 +113,6 @@ app.put("/administrador/:id", async (req, res) => {
 // DELETE
 app.delete("/administrador/:id", async (req, res) => {
   const db = conectarBD();
-
   try {
     await db.query(`DELETE FROM administrador WHERE id_admin=$1;`, [
       req.params.id
@@ -125,7 +123,6 @@ app.delete("/administrador/:id", async (req, res) => {
   }
 });
 
-
 // =======================================================================================
 // CRUD - SERVIÇO
 // =======================================================================================
@@ -134,13 +131,11 @@ app.delete("/administrador/:id", async (req, res) => {
 app.post("/servico", async (req, res) => {
   const db = conectarBD();
   const { nome, descricao, valor } = req.body;
-
   const query = `
-      INSERT INTO servico (nome, descricao, valor)
-      VALUES ($1, $2, $3)
-      RETURNING *;
+    INSERT INTO servico (nome, descricao, valor)
+    VALUES ($1, $2, $3)
+    RETURNING *;
   `;
-
   try {
     const result = await db.query(query, [nome, descricao, valor]);
     res.json(result.rows[0]);
@@ -152,7 +147,6 @@ app.post("/servico", async (req, res) => {
 // READ ALL
 app.get("/servico", async (req, res) => {
   const db = conectarBD();
-
   try {
     const result = await db.query(`SELECT * FROM servico;`);
     res.json(result.rows);
@@ -164,7 +158,6 @@ app.get("/servico", async (req, res) => {
 // READ BY ID
 app.get("/servico/:id", async (req, res) => {
   const db = conectarBD();
-
   try {
     const result = await db.query(
       `SELECT * FROM servico WHERE id_servico = $1;`,
@@ -180,7 +173,6 @@ app.get("/servico/:id", async (req, res) => {
 app.put("/servico/:id", async (req, res) => {
   const db = conectarBD();
   const { nome, descricao, valor } = req.body;
-
   try {
     const result = await db.query(
       `UPDATE servico SET nome=$1, descricao=$2, valor=$3 WHERE id_servico=$4 RETURNING *;`,
@@ -195,7 +187,6 @@ app.put("/servico/:id", async (req, res) => {
 // DELETE
 app.delete("/servico/:id", async (req, res) => {
   const db = conectarBD();
-
   try {
     await db.query(`DELETE FROM servico WHERE id_servico=$1;`, [
       req.params.id
@@ -207,8 +198,6 @@ app.delete("/servico/:id", async (req, res) => {
 });
 
 // ========================
-// INICIAR SERVIDOR
+// EXPORT PARA VERCEL
 // ========================
-app.listen(port, () => {
-  console.log(`Servidor rodando na porta ${port}`);
-});
+export default app;
